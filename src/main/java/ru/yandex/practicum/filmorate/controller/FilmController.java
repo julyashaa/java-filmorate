@@ -16,7 +16,7 @@ import java.util.Map;
 public class FilmController {
 
     private final Map<Long, Film> films = new HashMap<>();
-    private final static LocalDate CINEMA_BIRTHDAY = LocalDate.of(1895, 12, 28);
+    private static final LocalDate CINEMA_BIRTHDAY = LocalDate.of(1895, 12, 28);
 
     @GetMapping
     public Collection<Film> findAll() {
@@ -58,8 +58,7 @@ public class FilmController {
         }
         if (film.getReleaseDate() != null && film.getReleaseDate().isBefore(CINEMA_BIRTHDAY)) {
             log.error("Ошибка валидации фильма: слишком ранняя дата релиза: {}.", film.getReleaseDate());
-            throw new ValidationFilmException
-                    ("Дата релиза фильма должна быть не раньше 28 декабря 1895 года.");
+            throw new ValidationFilmException("Дата релиза фильма должна быть не раньше 28 декабря 1895 года.");
         }
         if (film.getDuration() != null && film.getDuration() <= 0) {
             log.error("Ошибка валидации фильма: некорректная продолжительность {}.", film.getDuration());

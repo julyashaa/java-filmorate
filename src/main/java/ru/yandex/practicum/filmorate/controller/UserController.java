@@ -52,14 +52,12 @@ public class UserController {
     private void validateUser(User user) {
         if (user.getEmail() == null || user.getEmail().isBlank() || !user.getEmail().contains("@")) {
             log.error("Ошибка валидации пользователя: некорректный email {}", user.getEmail());
-            throw new ValidationUserException
-                    ("Электронная почта не может быть пустой и должна содержать символ '@'");
+            throw new ValidationUserException("Электронная почта не может быть пустой и должна содержать символ '@'");
         }
 
         if (user.getLogin() == null || user.getLogin().isBlank() || user.getLogin().contains(" ")) {
             log.error("Ошибка валидации пользователя: некорректный логин {}", user.getLogin());
-            throw new ValidationUserException
-                    ("Логин не может быть пустой и не может содержать пробелы");
+            throw new ValidationUserException("Логин не может быть пустой и не может содержать пробелы");
         }
 
         if (user.getBirthday() != null && user.getBirthday().isAfter(LocalDate.now())) {
