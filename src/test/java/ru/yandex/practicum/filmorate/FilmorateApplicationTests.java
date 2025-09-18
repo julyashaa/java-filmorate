@@ -3,12 +3,12 @@ package ru.yandex.practicum.filmorate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import ru.yandex.practicum.filmorate.controller.FilmController;
-import ru.yandex.practicum.filmorate.controller.UserController;
 import ru.yandex.practicum.filmorate.exception.ValidationFilmException;
 import ru.yandex.practicum.filmorate.exception.ValidationUserException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.service.UserService;
 
 import java.time.LocalDate;
 
@@ -16,13 +16,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 class FilmorateApplicationTests {
-	private FilmController films;
-	private UserController users;
+	private FilmService films;
+	private UserService users;
 
 	@BeforeEach
 	void setUp() {
-		films = new FilmController();
-		users = new UserController();
+		films = new FilmService();
+		users = new UserService();
 	}
 
 	@Test
@@ -91,7 +91,7 @@ class FilmorateApplicationTests {
 	}
 
 	@Test
-	void userCreateFailOnEmailMissing_orNoAt() {
+	void userCreateFailOnEmailMissingOrNoAt() {
 		User blank = validUser();
 		blank.setEmail("   ");
 		assertThrows(ValidationUserException.class, () -> users.create(blank));
