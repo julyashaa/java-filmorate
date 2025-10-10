@@ -3,14 +3,18 @@ package ru.yandex.practicum.filmorate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationFilmException;
 import ru.yandex.practicum.filmorate.exception.ValidationUserException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
+import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -21,8 +25,10 @@ class FilmorateApplicationTests {
 
 	@BeforeEach
 	void setUp() {
-		films = new FilmService();
-		users = new UserService();
+		InMemoryUserStorage userStorage = new InMemoryUserStorage();
+		InMemoryFilmStorage filmStorage = new InMemoryFilmStorage();
+		films = new FilmService(filmStorage, userStorage);
+		users = new UserService(userStorage);
 	}
 
 	@Test
@@ -125,10 +131,73 @@ class FilmorateApplicationTests {
 		User created = users.create(validUser());
 
 		User noId = validUser();
-		assertThrows(ValidationUserException.class, () -> users.update(noId));
+		assertThrows(NotFoundException.class, () -> users.update(noId));
 
 		User unknown = validUser();
 		unknown.setId(created.getId() + 999);
-		assertThrows(ValidationUserException.class, () -> users.update(unknown));
+		assertThrows(NotFoundException.class, () -> users.update(unknown));
+	}
+
+	@Test
+	void addRemoveAndCommonFriends() {
+		User u1 = users.create(validUser());
+		User u2 = users.create(validUser());
+		User u3 = users.create(validUser());
+
+		users.addFriend(u1.getId(), u2.getId());
+		users.addFriend(u1.getId(), u3.getId());
+		users.addFriend(u2.getId(), u3.getId());
+
+		List<User> friendsU1 = users.listFriends(u1.getId());
+		assertEquals(2, friendsU1.size());
+
+		List<User> common = users.commonFriends(u1.getId(), u2.getId());
+		assertEquals(1, common.size());
+		assertEquals(u3.getId(), common.getFirst().getId());
+
+		users.removeFriend(u1.getId(), u2.getId());
+		List<User> friendsU1After = users.listFriends(u1.getId());
+		assertEquals(1, friendsU1After.size());
+		assertEquals(u3.getId(), friendsU1After.getFirst().getId());
+	}
+
+	@Test
+	void addRemoveLikeAndPopularFilms() {
+		User u1 = users.create(validUser());
+		User u2 = users.create(validUser());
+		User u3 = users.create(validUser());
+
+		Film f1 = films.create(validFilm());
+		Film f2 = films.create(validFilm());
+		Film f3 = films.create(validFilm());
+
+		films.addLike(f1.getId(), u1.getId());
+		films.addLike(f1.getId(), u2.getId());
+		films.addLike(f2.getId(), u3.getId());
+
+		List<Film> topFilms = films.getPopular(2);
+		assertEquals(2, topFilms.size());
+		assertEquals(f1.getId(), topFilms.getFirst().getId());
+		assertEquals(f2.getId(), topFilms.get(1).getId());
+
+		films.removeLike(f1.getId(), u2.getId());
+		topFilms = films.getPopular(2);
+		assertEquals(f1.getId(), topFilms.getFirst().getId());
+		assertEquals(f2.getId(), topFilms.get(1).getId());
+	}
+
+	@Test
+	void popularDefaultLimitIs10() {
+		for (int i = 0; i < 12; i++) {
+			users.create(validUser());
+		}
+		for (int i = 0; i < 15; i++) {
+			films.create(validFilm());
+		}
+		for (long i = 1; i <= 12; i++) {
+			films.addLike(i, i);
+		}
+		List<Film> top = films.getPopular(10);
+		assertEquals(10, top.size());
 	}
 }
