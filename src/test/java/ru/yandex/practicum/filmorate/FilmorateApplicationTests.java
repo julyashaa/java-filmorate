@@ -145,8 +145,13 @@ class FilmorateApplicationTests {
 		User u3 = users.create(validUser());
 
 		users.addFriend(u1.getId(), u2.getId());
+		users.addFriend(u2.getId(), u1.getId());
+
 		users.addFriend(u1.getId(), u3.getId());
+		users.addFriend(u3.getId(), u1.getId());
+
 		users.addFriend(u2.getId(), u3.getId());
+		users.addFriend(u3.getId(), u2.getId());
 
 		List<User> friendsU1 = users.listFriends(u1.getId());
 		assertEquals(2, friendsU1.size());

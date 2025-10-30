@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationUserException;
+import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
@@ -43,13 +44,22 @@ public class UserService {
     }
 
     public void addFriend(long userId, long friendId) {
+        if (userId == friendId) {
+            throw new ValidationUserException("Нельзя добавить в друзья самого себя");
+        }
         User user = requiredUser(userId);
         User friend = requiredUser(friendId);
-        user.getFriends().add(friendId);
-        friend.getFriends().add(userId);
+        FriendshipStatus status = friend.getFriends().get(userId);
+        if (status == FriendshipStatus.UNCONFIRMED) {
+            user.getFriends().put(friendId, FriendshipStatus.CONFIRMED);
+            friend.getFriends().put(userId, FriendshipStatus.CONFIRMED);
+            log.info("Дружба подтверждена: {} ⇄ {}", userId, friendId);
+        } else {
+            user.getFriends().put(friendId, FriendshipStatus.UNCONFIRMED);
+            log.info("Отправлена заявка в друзья: {} → {}", userId, friendId);
+        }
         userStorage.update(user);
         userStorage.update(friend);
-        log.info("Пользователь {} и {} теперь друзья.", userId, friendId);
     }
 
     public void removeFriend(long userId, long friendId) {
@@ -65,8 +75,10 @@ public class UserService {
     public List<User> listFriends(long userId) {
         User user = requiredUser(userId);
         return user.getFriends()
+                .entrySet()
                 .stream()
-                .map(this::requiredUser)
+                .filter(e -> e.getValue() == FriendshipStatus.CONFIRMED)
+                .map(e -> requiredUser(e.getKey()))
                 .collect(Collectors.toList());
     }
 
@@ -74,8 +86,11 @@ public class UserService {
         User user = requiredUser(userId);
         User friend = requiredUser(friendId);
         return user.getFriends()
+                .entrySet()
                 .stream()
-                .filter(friend.getFriends()::contains)
+                .filter(e -> e.getValue() == FriendshipStatus.CONFIRMED)     // подтвержден у u1
+                .map(e -> e.getKey())
+                .filter(fid -> friend.getFriends().getOrDefault(fid, null) == FriendshipStatus.CONFIRMED) // и у u2
                 .map(this::requiredUser)
                 .collect(Collectors.toList());
     }
