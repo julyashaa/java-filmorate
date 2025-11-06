@@ -6,6 +6,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.dal.mappers.UserRowMapper;
+import ru.yandex.practicum.filmorate.dal.sql.UserSqlQuery;
 import ru.yandex.practicum.filmorate.dal.storage.UserStorage;
 import ru.yandex.practicum.filmorate.model.User;
 
@@ -23,24 +24,21 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public Collection<User> findAll() {
-        String sql = "SELECT id, email, login, name, birthday FROM users";
-        return jdbcTemplate.query(sql, userRowMapper);
+        return jdbcTemplate.query(UserSqlQuery.FIND_ALL.getSql(), userRowMapper);
     }
 
     @Override
     public Optional<User> findById(Long id) {
-        String sql = "SELECT * FROM users WHERE id = ?";
-        return jdbcTemplate.query(sql, userRowMapper, id)
+        return jdbcTemplate.query(UserSqlQuery.FIND_BY_ID.getSql(), userRowMapper, id)
                 .stream()
                 .findFirst();
     }
 
     @Override
     public User add(User user) {
-        String sql = "INSERT INTO users (email, login, name, birthday) VALUES (?, ?, ?, ?)";
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(conn -> {
-            PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement ps = conn.prepareStatement(UserSqlQuery.INSERT.getSql(), Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, user.getEmail());
             ps.setString(2, user.getLogin());
             ps.setObject(3, user.getName());
@@ -54,8 +52,7 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public User update(User user) {
-        String sql = "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE id = ?";
-        jdbcTemplate.update(sql,
+        jdbcTemplate.update(UserSqlQuery.UPDATE.getSql(),
                 user.getEmail(),
                 user.getLogin(),
                 user.getName(),
@@ -66,15 +63,13 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public void deleteById(Long id) {
-        String sql = "DELETE FROM users WHERE id = ?";
-        jdbcTemplate.update(sql, id);
+        jdbcTemplate.update(UserSqlQuery.DELETE_BY_ID.getSql(), id);
     }
 
     @Override
     public boolean existsById(Long id) {
-        String sql = "SELECT COUNT(*) FROM users WHERE id = ?";
         try {
-            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
+            Integer count = jdbcTemplate.queryForObject(UserSqlQuery.EXISTS_BY_ID.getSql(), Integer.class, id);
             return count > 0;
         } catch (Exception e) {
             return false;
@@ -86,36 +81,21 @@ public class UserDbStorage implements UserStorage {
         if (userId == friendId) return;
         if (!existsById(userId) || !existsById(friendId)) return;
 
-        String sql = "MERGE INTO friendships (user_id, friend_id) KEY(user_id, friend_id) VALUES (?, ?)";
-        jdbcTemplate.update(sql, userId, friendId);
+        jdbcTemplate.update(UserSqlQuery.ADD_FRIEND.getSql(), userId, friendId);
     }
 
     @Override
     public void removeFriend(long userId, long friendId) {
-        jdbcTemplate.update("DELETE FROM friendships WHERE user_id = ? AND friend_id = ?", userId, friendId);
+        jdbcTemplate.update(UserSqlQuery.REMOVE_FRIEND.getSql(), userId, friendId);
     }
 
     @Override
     public List<User> findFriends(long userId) {
-        String sql = """
-                SELECT u.id, u.email, u.login, u.name, u.birthday
-                FROM friendships f
-                JOIN users u ON u.id = f.friend_id
-                WHERE f.user_id = ?
-                """;
-        return jdbcTemplate.query(sql, userRowMapper, userId);
+        return jdbcTemplate.query(UserSqlQuery.FIND_FRIENDS.getSql(), userRowMapper, userId);
     }
 
     @Override
     public List<User> findCommonFriends(long userId, long otherUserId) {
-        // пересечение двух списков: кто есть у userId и у otherUserId одновременно
-        String sql = """
-                SELECT u.id, u.email, u.login, u.name, u.birthday
-                FROM friendships f1
-                JOIN friendships f2 ON f1.friend_id = f2.friend_id
-                JOIN users u ON u.id = f1.friend_id
-                WHERE f1.user_id = ? AND f2.user_id = ?
-                """;
-        return jdbcTemplate.query(sql, userRowMapper, userId, otherUserId);
+        return jdbcTemplate.query(UserSqlQuery.FIND_COMMON_FRIENDS.getSql(), userRowMapper, userId, otherUserId);
     }
 }

@@ -12,7 +12,6 @@ import java.util.Collection;
 import java.util.List;
 
 @RestController
-@RequestMapping("")
 @RequiredArgsConstructor
 public class FilmController {
 
